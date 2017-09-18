@@ -15,7 +15,8 @@ public class HelloWorldApi {
 
     public static void main(String[] args) {
         Javalin.create()
-            .port(7070)
+            .hostName("localhost")
+            .port(8080)
             .start()
             .routes(() -> {
                 get("/hello", ctx -> ctx.result("Hello World"));

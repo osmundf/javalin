@@ -16,12 +16,11 @@ import org.slf4j.LoggerFactory
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
-
 class EmbeddedJettyServer(private val server: Server, private val javalinServlet: JavalinServlet) : EmbeddedServer {
 
     private val log = LoggerFactory.getLogger(EmbeddedServer::class.java)
 
-    override fun start(port: Int): Int {
+    override fun start(host: String, port: Int): Int {
 
         server.apply {
             handler = object : SessionHandler() {

@@ -20,6 +20,7 @@ enum class MyRoles : Role {
 fun main(args: Array<String>) {
 
     Javalin.create()
+            .hostName("localhost")
             .port(7070)
             .start()
             .accessManager { handler, ctx, permittedRoles ->
