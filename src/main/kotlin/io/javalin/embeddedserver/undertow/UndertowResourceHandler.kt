@@ -4,7 +4,7 @@
  * Licensed under Apache 2.0: https://github.com/tipsy/javalin/blob/master/LICENSE
  */
 
-package io.javalin.embeddedserver.jetty
+package io.javalin.embeddedserver.undertow
 
 import io.javalin.embeddedserver.StaticFileConfig
 import io.javalin.embeddedserver.StaticResourceHandler
