@@ -1,16 +1,22 @@
 package io.javalin;
 
+import java.net.InetSocketAddress;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
+import org.jetbrains.annotations.NotNull;
+import org.junit.Test;
+
 import io.javalin.core.JavalinServlet;
 import io.javalin.embeddedserver.EmbeddedServer;
 import io.javalin.embeddedserver.EmbeddedServerFactory;
 import io.javalin.embeddedserver.StaticFileConfig;
+import io.undertow.Handlers;
 import io.undertow.Undertow;
-import org.hamcrest.MatcherAssert;
-import org.jetbrains.annotations.NotNull;
-import org.junit.Test;
-
-import java.util.HashMap;
-import java.util.Map;
+import io.undertow.server.handlers.resource.PathResourceManager;
 
 import static org.hamcrest.CoreMatchers.is;
 
@@ -19,57 +25,75 @@ import static org.hamcrest.CoreMatchers.is;
  */
 public class TestCustomUndertow {
 
-	@Test
-	public void test_embeddedServer_setsCustomServer()
-	throws Exception {
+    @Test
+    public void test_embeddedServer_setsCustomServer()
+        throws Exception {
 
-		EmbeddedServerFactory factory = CustomServer::new;
+        EmbeddedServerFactory factory = CustomServer::new;
 
-		Javalin app = Javalin.create()
-			.hostName("localhost").port(0)
-			.embeddedServer(factory)
-			.start();
-		MatcherAssert.assertThat(app.embeddedServer().attribute("is-custom-server"), is(true));
-		app.stop();
-	}
+        Javalin app = Javalin.create()
+            .hostName("localhost").port(8080)
+            .embeddedServer(factory)
+            .start();
+        MatcherAssert.assertThat(app, Matchers.notNullValue());
+        MatcherAssert.assertThat(app.embeddedServer(), Matchers.notNullValue());
+        MatcherAssert.assertThat(app.embeddedServer().attribute("is-custom-server"), is(true));
+        MatcherAssert.assertThat(app.embeddedServer().activeThreadCount(), Matchers.greaterThan(0));
+        app.stop();
+    }
 
-	private class CustomServer implements EmbeddedServer {
+    private class CustomServer implements EmbeddedServer {
 
-		private Map<String, Object> attributeMap = new HashMap<>();
+        private Map<String, Object> attributeMap = new HashMap<>();
 
-		@SuppressWarnings("WeakerAccess")
-		public CustomServer(JavalinServlet javalinServlet, StaticFileConfig staticFileConfig) {
-			attributeMap.put("javalinServlet", javalinServlet);
-			attributeMap.put("staticFileConfig", staticFileConfig);
-			attributeMap.put("is-custom-server", true);
-		}
+        private Undertow server = null;
 
-		@Override
-		public int start(
-			@NotNull
-				String host, int port)
-		throws Exception {
-			return port;
-		}
+        @SuppressWarnings("WeakerAccess")
+        public CustomServer(JavalinServlet javalinServlet, StaticFileConfig staticFileConfig) {
+            attributeMap.put("javalinServlet", javalinServlet);
+            attributeMap.put("staticFileConfig", staticFileConfig);
+            attributeMap.put("is-custom-server", true);
+        }
 
-		@Override
-		public void stop()
-		throws Exception {
-		}
+        @Override
+        public int start(
+            @NotNull
+                String host, int port)
+            throws Exception {
 
-		@Override
-		public int activeThreadCount() {
-			return -1;
-		}
+            if (server != null) {
+                throw new Exception("Server already started.");
+            }
 
-		@NotNull
-		@Override
-		public Object attribute(
-			@NotNull
-				String key) {
-			Object value = attributeMap.get(key);
-			return value != null ? value : "";
-		}
-	}
+            server = Undertow.builder()
+                .addHttpListener(port, host)
+                .setHandler(Handlers.resource(new PathResourceManager(Paths.get("."), 100)).setDirectoryListingEnabled(true))
+                .build();
+            server.start();
+
+            return ((InetSocketAddress) server.getListenerInfo().get(0).getAddress()).getPort();
+        }
+
+        @Override
+        public void stop()
+            throws Exception {
+            server.stop();
+            server = null;
+        }
+
+        @Override
+        public int activeThreadCount() {
+            return server != null && server.getWorker() != null ? server.getWorker().getIoThreadCount() : -1;
+        }
+
+        @NotNull
+        @Override
+        public Object attribute(
+            @NotNull
+                String key) {
+            Object value = attributeMap.get(key);
+            return value != null ? value : "";
+        }
+    }
 
 }
