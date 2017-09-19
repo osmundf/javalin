@@ -9,6 +9,9 @@ package io.javalin;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.javalin.core.ErrorMapper;
 import io.javalin.core.ExceptionMapper;
 import io.javalin.core.HandlerEntry;
@@ -27,8 +30,6 @@ import io.javalin.event.EventManager;
 import io.javalin.event.EventType;
 import io.javalin.security.AccessManager;
 import io.javalin.security.Role;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class Javalin {
 
@@ -37,18 +38,21 @@ public class Javalin {
     ExceptionMapper exceptionMapper = new ExceptionMapper();
     ErrorMapper errorMapper = new ErrorMapper();
     LogLevel logLevel = LogLevel.OFF;
+
     private String hostName = "localhost";
-    private int port = 8080;
+    private int port = 7000;
+    private boolean started = false;
+
     private EmbeddedServer embeddedServer;
     // private EmbeddedServerFactory embeddedServerFactory = new EmbeddedJettyFactory();
     private EmbeddedServerFactory embeddedServerFactory = new EmbeddedUndertowFactory();
     private StaticFileConfig staticFileConfig = null;
+
     private EventManager eventManager = new EventManager();
 
     private AccessManager accessManager = (Handler handler, Context ctx, List<Role> permittedRoles) -> {
         throw new IllegalStateException("No access manager configured. Add an access manager using 'accessManager()'");
     };
-    private boolean started = false;
 
     private Javalin() {
     }
@@ -58,13 +62,13 @@ public class Javalin {
         return new Javalin();
     }
 
-    // Begin embedded server methods
-
     public static Javalin start(int port) {
         return new Javalin()
             .port(port)
             .start();
     }
+
+    // Begin embedded server methods
 
     public Javalin start() {
         if (!started) {
@@ -79,8 +83,7 @@ public class Javalin {
                 log.info("Javalin has started \\o/");
                 eventManager.fireEvent(EventType.SERVER_STARTED, this);
                 started = true;
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 log.error("Failed to start Javalin", e);
                 eventManager.fireEvent(EventType.SERVER_START_FAILED, this);
             }
@@ -93,8 +96,7 @@ public class Javalin {
         log.info("Stopping Javalin ...");
         try {
             embeddedServer.stop();
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.error("Javalin failed to stop gracefully", e);
         }
         log.info("Javalin has stopped");
